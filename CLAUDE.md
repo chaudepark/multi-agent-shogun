@@ -242,7 +242,7 @@ MCPツールは遅延ロード方式。使用前に必ず `ToolSearch` で検索
 2. 返ってきたツール（mcp__notion__xxx）を使用
 ```
 
-**導入済みMCP**: Notion, Playwright, GitHub, Sequential Thinking, Memory, Context7, Firebase
+**導入済みMCP**: Notion, Playwright, Memory, Context7, Firebase
 
 ## Subagent Delegation Principle
 

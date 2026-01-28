@@ -1,1 +1,63 @@
-queue: []
+queue:
+  - cmd_id: cmd_009
+    status: implementing
+
+  - cmd_id: cmd_012
+    type: feature
+    priority: high
+    title: "タブバー全画面表示 - ディレクトリ構造変更で実装"
+    description: |
+      殿より実装指示！タブバー全画面表示を実装せよ！
+
+      【採用方針】
+      選択肢①「ディレクトリ構造変更」を採用（Expo Router公式推奨）
+
+      【現在の構造】
+      (app)/_layout.tsx → Stack Navigator
+        ├── (tabs)/ → Tabs Navigator（ここだけタブ表示）
+        ├── recruitments/[id]/ → タブ非表示
+        ├── users/[id]/ → タブ非表示
+        └── conversations/[id]/ → タブ非表示
+
+      【変更後の構造】
+      (app)/(tabs)/_layout.tsx → Tabs Navigator
+        ├── (home)/
+        │     └── _layout.tsx → Stack Navigator
+        │           ├── index.tsx (募集一覧)
+        │           ├── recruitments/[id]/index.tsx (募集詳細)
+        │           └── users/[id]/index.tsx (ユーザー詳細)
+        │
+        ├── (messages)/
+        │     └── _layout.tsx → Stack Navigator
+        │           ├── index.tsx (メッセージ一覧)
+        │           └── [id]/index.tsx (チャット詳細)
+        │
+        └── (mypage)/
+              └── _layout.tsx → Stack Navigator
+                    ├── index.tsx (マイページ)
+                    ├── my-recruitments.tsx (自分の募集)
+                    ├── favorites.tsx (お気に入り)
+                    └── settings/ (設定)
+
+      【実装手順】
+      1. (tabs)内にサブディレクトリ(home), (messages), (mypage)を作成
+      2. 各サブディレクトリに_layout.tsx (Stack Navigator)を作成
+      3. 画面ファイルを適切なディレクトリに移動
+      4. router.push()のパスを修正
+      5. TypeScriptチェック
+      6. 動作確認
+
+      【足軽割り当て】
+      - 足軽5: (home)グループ作成（募集一覧、募集詳細、ユーザー詳細）
+      - 足軽6: (messages)グループ作成（メッセージ一覧、チャット詳細）
+      - 足軽7: (mypage)グループ作成（マイページ、自分の募集、お気に入り等）
+      - 足軽8: 全体統合、router.push修正、動作確認
+
+      【対象リポジトリ】
+      - /home/sarai/work/fairway-buddies-app
+    status: implementing
+    created_at: "2026-01-28T22:20:00+09:00"
+
+  - cmd_id: cmd_015
+    status: in_progress
+

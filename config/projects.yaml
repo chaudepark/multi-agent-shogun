@@ -1,38 +1,24 @@
-# =============================================================================
-# プロジェクト設定
-# =============================================================================
-# auto_load: プロジェクトルール自動読み込み設定
-#   enabled: true で有効化
-#   files: 読み込むファイル（相対パス）
-#     - CLAUDE.md             # プロジェクト固有の指示
-#     - .claude/rules/*.md    # 追加ルールファイル
-#     - .cursorrules          # Cursor互換
-# =============================================================================
-
 projects:
-  - id: sample_project
-    name: "Sample Project"
-    path: "/mnt/c/Projects/Sample"
+  - id: fairway-api
+    name: "Fairway Buddies API"
+    path: "/home/sarai/work/fairway-buddies-api"
     priority: high
     status: active
-    auto_load:
-      enabled: true
-      files:
-        - CLAUDE.md
-        - .claude/rules/*.md
-
-  - id: pitacas
-    name: "ピタキャス - タレントキャスティング支援AI"
-    path: "/mnt/c/tools/pitacas"
-    priority: high
-    status: active
-    notion_url: "https://www.notion.so/AI-2dcae6e4037981c98634fdaad21f0daa"
     description: |
-      キャスティング業界向けAI×SaaSプラットフォーム。
-      タレント検索・リスト作成の自動化により、従来半日かかっていた作業を10分で提出物化。
-      キラーフィーチャー: Surprise-but-Right（意外なのに納得）提案
-    auto_load:
-      enabled: true
-      files:
-        - CLAUDE.md
-        - .claude/rules/*.md
+      ゴルフ愛好家向けマッチング・ネットワーキングプラットフォームのバックエンドAPI。
+      技術スタック: Hono + TypeScript + Prisma + PostgreSQL
+      Docker を用いたローカル開発、Cloud SQL への接続に対応。
+      TDD を徹底し、ESLint/Prettier によるコード品質管理を実施。
+
+  - id: fairway-app
+    name: "Fairway Buddies App"
+    path: "/home/sarai/work/fairway-buddies-app"
+    priority: high
+    status: active
+    description: |
+      ゴルフ愛好家向けマッチング・ネットワーキングプラットフォームのモバイルアプリ。
+      技術スタック: Expo + React Native + TypeScript
+      ファイルベースルーティング採用。
+      CI: GitHub Actions で lint + typecheck を実行。
+
+current_project: fairway-app
