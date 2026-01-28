@@ -388,25 +388,28 @@ echo ""
 if [ "$SETUP_ONLY" = false ]; then
     log_war "👑 全軍に Claude Code を召喚中..."
 
-    # 将軍
-    tmux send-keys -t shogun "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions"
+    # 将軍（新しいセッションIDで起動し、前回のコンテキストを引き継がない）
+    SHOGUN_SESSION_ID=$(uuidgen)
+    tmux send-keys -t shogun "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions --session-id $SHOGUN_SESSION_ID"
     tmux send-keys -t shogun Enter
-    log_info "  └─ 将軍、召喚完了"
+    log_info "  └─ 将軍、召喚完了 (session: ${SHOGUN_SESSION_ID:0:8}...)"
 
     # 少し待機（安定のため）
     sleep 1
 
     # 家老 + 足軽（9ペイン）
     for i in {0..8}; do
-        tmux send-keys -t "multiagent:0.$i" "claude --dangerously-skip-permissions"
+        AGENT_SESSION_ID=$(uuidgen)
+        tmux send-keys -t "multiagent:0.$i" "claude --dangerously-skip-permissions --session-id $AGENT_SESSION_ID"
         tmux send-keys -t "multiagent:0.$i" Enter
     done
-    log_info "  └─ 家老・足軽、召喚完了"
+    log_info "  └─ 家老・足軽、召喚完了（各自新セッションID）"
 
     # 参謀
-    tmux send-keys -t sanbo "claude --dangerously-skip-permissions"
+    SANBO_SESSION_ID=$(uuidgen)
+    tmux send-keys -t sanbo "claude --dangerously-skip-permissions --session-id $SANBO_SESSION_ID"
     tmux send-keys -t sanbo Enter
-    log_info "  └─ 参謀、召喚完了"
+    log_info "  └─ 参謀、召喚完了 (session: ${SANBO_SESSION_ID:0:8}...)"
 
     log_success "✅ 全軍 Claude Code 起動完了"
     echo ""

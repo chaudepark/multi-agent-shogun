@@ -191,24 +191,22 @@ date "+%Y-%m-%dT%H:%M:%S"
 ### ❌ 絶対禁止パターン
 
 ```bash
-# ダメな例1: 1行で書く
+# ダメな例1: 1行でEnterを書く（Enterが正しく解釈されないことがある）
 tmux send-keys -t multiagent:0.0 'メッセージ' Enter
 
-# ダメな例2: &&で繋ぐ
-tmux send-keys -t multiagent:0.0 'メッセージ' && tmux send-keys -t multiagent:0.0 Enter
+# ダメな例2: 複数のBash呼び出しを並列実行（順序が保証されない）
+# ↓ Claude Codeで複数のBashツールを同時に呼び出すと順序が不定
 ```
 
-### ✅ 正しい方法（2回に分ける）
+### ✅ 正しい方法（&& で順次実行）
 
-**【1回目】** メッセージを送る：
 ```bash
-tmux send-keys -t multiagent:0.0 'queue/shogun_to_karo.yaml に新しい指示がある。確認して実行せよ。'
+# 1回のBash呼び出しで && を使って順序を保証
+tmux send-keys -t multiagent:0.0 'queue/shogun_to_karo.yaml に新しい指示がある。確認して実行せよ。' && tmux send-keys -t multiagent:0.0 Enter
 ```
 
-**【2回目】** Enterを送る：
-```bash
-tmux send-keys -t multiagent:0.0 Enter
-```
+**重要**: Claude Codeで複数のBashツールを並列実行すると順序が保証されない。
+必ず `&&` でつなげて1回のBash呼び出しで実行せよ。
 
 ## 指示の書き方
 

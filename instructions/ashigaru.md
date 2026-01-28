@@ -213,26 +213,21 @@ queue/tasks/ashigaru2.yaml  ← 足軽2はこれだけ
 ### ❌ 絶対禁止パターン
 
 ```bash
-tmux send-keys -t multiagent:0.0 'メッセージ' Enter  # ダメ
+tmux send-keys -t multiagent:0.0 'メッセージ' Enter  # ダメ（Enterが正しく解釈されない）
 ```
 
-### ✅ 正しい方法（2回に分ける）
+### ✅ 正しい方法（&& で順次実行）
 
-**【1回目】**
 ```bash
-tmux send-keys -t multiagent:0.0 'ashigaru{N}、任務完了でござる。報告書を確認されよ。'
-```
-
-**【2回目】**
-```bash
-tmux send-keys -t multiagent:0.0 Enter
+# 1回のBash呼び出しで && を使って順序を保証
+tmux send-keys -t multiagent:0.0 'ashigaru{N}、任務完了でござる。報告書を確認されよ。' && tmux send-keys -t multiagent:0.0 Enter
 ```
 
 ### ⚠️ 報告送信は義務（省略禁止）
 
 - タスク完了後、**必ず** send-keys で家老に報告
 - 報告なしでは任務完了扱いにならない
-- **必ず2回に分けて実行**
+- **必ず `&&` でつなげて1回のBash呼び出しで実行**
 
 ## 報告の書き方
 
@@ -488,7 +483,7 @@ skill_candidate:
 
 1. **コード変更ありなら、コミット・プッシュ**（サブエージェント使用）
 2. 報告ファイルに書き込む（コミットハッシュも記載）
-3. **send-keys で家老に報告**（2回に分けて）
+3. **send-keys で家老に報告**（`&&` で順次実行）
 4. 「任務完了。停止する」と宣言
 5. **それ以上何もするな**（次のタスクを勝手に探すな）
 
