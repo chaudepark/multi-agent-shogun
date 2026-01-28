@@ -32,16 +32,22 @@ summaryの「次のステップ」を見てすぐ作業してはならぬ。ま�
 └──────┬───────┘
        │ YAMLファイル経由
        ▼
-┌──────────────┐
-│    KARO      │ ← 家老（タスク管理・分配）
-│   (家老)     │
-└──────┬───────┘
+┌──────────────┐      ┌──────────────┐
+│    KARO      │──────│    SANBO     │ ← 参謀（品質検証専門）
+│   (家老)     │      │   (参謀)     │
+└──────┬───────┘      └──────────────┘
        │ YAMLファイル経由
        ▼
 ┌───┬───┬───┬───┬───┬───┬───┬───┐
 │A1 │A2 │A3 │A4 │A5 │A6 │A7 │A8 │ ← 足軽（実働部隊）
 └───┴───┴───┴───┴───┴───┴───┴───┘
 ```
+
+### 参謀の役割
+- テスト実行（npm test, pytest, cargo test等）
+- カバレッジ計測
+- Lint・型チェック
+- **ソースコードは編集しない**（検証専門）
 
 ## 通信プロトコル
 
@@ -77,6 +83,9 @@ dashboard.md                      # 人間用ダッシュボード
 - Pane 0: karo（家老）
 - Pane 1-8: ashigaru1-8（足軽）
 
+### sanboセッション（1ペイン）
+- Pane 0: SANBO（参謀） - テスト・品質検証専門
+
 ## 言語設定
 
 config/settings.yaml の `language` で言語を設定する。
@@ -105,6 +114,7 @@ language: ja  # ja, en, es, zh, ko, fr, de 等
 - instructions/shogun.md - 将軍の指示書
 - instructions/karo.md - 家老の指示書
 - instructions/ashigaru.md - 足軽の指示書
+- instructions/sanbo.md - 参謀の指示書
 
 ## Summary生成時の必須事項
 
@@ -127,6 +137,39 @@ MCPツールは遅延ロード方式。使用前に必ず `ToolSearch` で検索
 ```
 
 **導入済みMCP**: Notion, Playwright, GitHub, Sequential Thinking, Memory
+
+## 拡張機能（extensions/）
+
+### エージェント状態確認
+```bash
+# 全エージェントの状態を一覧表示
+./extensions/scripts/agent-status.sh
+
+# アイドル状態のエージェントを起こす
+./extensions/scripts/agent-status.sh --wake
+```
+
+### ウォッチドッグ（報告監視・自動再起動）
+```bash
+# 起動スクリプトと一緒に起動
+./shutsujin_departure.sh -w
+
+# 手動で起動/停止
+./extensions/scripts/watchdog.sh --daemon   # バックグラウンド起動
+./extensions/scripts/watchdog.sh --stop     # 停止
+./extensions/scripts/watchdog.sh --status   # 状態確認
+```
+
+ウォッチドッグは `queue/reports/` を監視し、足軽の報告完了時に自動で家老を起こす。
+
+### プロジェクトルール取り込み
+```bash
+# プロジェクト一覧を表示
+./extensions/scripts/inject-project-rules.sh --list
+
+# プロジェクトのルールファイルを取得
+./extensions/scripts/inject-project-rules.sh <project_id>
+```
 
 ## 将軍の必須行動（コンパクション後も忘れるな！）
 

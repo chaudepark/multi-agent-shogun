@@ -37,6 +37,7 @@ log_war() {
 # ═══════════════════════════════════════════════════════════════════════════════
 SETUP_ONLY=false
 OPEN_TERMINAL=false
+START_WATCHDOG=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -48,6 +49,10 @@ while [[ $# -gt 0 ]]; do
             OPEN_TERMINAL=true
             shift
             ;;
+        -w|--watchdog)
+            START_WATCHDOG=true
+            shift
+            ;;
         -h|--help)
             echo ""
             echo "🏯 multi-agent-shogun 出陣スクリプト"
@@ -57,17 +62,25 @@ while [[ $# -gt 0 ]]; do
             echo "オプション:"
             echo "  -s, --setup-only  tmuxセッションのセットアップのみ（Claude起動なし）"
             echo "  -t, --terminal    Windows Terminal で新しいタブを開く"
+            echo "  -w, --watchdog    ウォッチドッグを起動（報告監視・自動再起動）"
             echo "  -h, --help        このヘルプを表示"
             echo ""
             echo "例:"
-            echo "  ./shutsujin_departure.sh      # 全エージェント起動（通常の出陣）"
-            echo "  ./shutsujin_departure.sh -s   # セットアップのみ（手動でClaude起動）"
-            echo "  ./shutsujin_departure.sh -t   # 全エージェント起動 + ターミナルタブ展開"
+            echo "  ./shutsujin_departure.sh         # 全エージェント起動（通常の出陣）"
+            echo "  ./shutsujin_departure.sh -s      # セットアップのみ（手動でClaude起動）"
+            echo "  ./shutsujin_departure.sh -t      # 全エージェント起動 + ターミナルタブ展開"
+            echo "  ./shutsujin_departure.sh -w      # 全エージェント起動 + ウォッチドッグ"
+            echo "  ./shutsujin_departure.sh -t -w   # 全部入り"
             echo ""
             echo "エイリアス:"
             echo "  csst  → cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh"
             echo "  css   → tmux attach-session -t shogun"
             echo "  csm   → tmux attach-session -t multiagent"
+            echo ""
+            echo "拡張機能:"
+            echo "  ./extensions/scripts/agent-status.sh        # エージェント状態確認"
+            echo "  ./extensions/scripts/agent-status.sh --wake # アイドルなエージェントを起こす"
+            echo "  ./extensions/scripts/watchdog.sh --status   # ウォッチドッグ状態確認"
             echo ""
             exit 0
             ;;
@@ -149,6 +162,7 @@ echo ""
 log_info "🧹 既存の陣を撤収中..."
 tmux kill-session -t multiagent 2>/dev/null && log_info "  └─ multiagent陣、撤収完了" || log_info "  └─ multiagent陣は存在せず"
 tmux kill-session -t shogun 2>/dev/null && log_info "  └─ shogun本陣、撤収完了" || log_info "  └─ shogun本陣は存在せず"
+tmux kill-session -t sanbo 2>/dev/null && log_info "  └─ sanbo参謀陣、撤収完了" || log_info "  └─ sanbo参謀陣は存在せず"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 2: 報告ファイルリセット
@@ -332,6 +346,18 @@ log_success "  └─ 将軍の本陣、構築完了"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# STEP 5.5: sanboセッション作成（1ペイン - 参謀）
+# ═══════════════════════════════════════════════════════════════════════════════
+log_war "🧠 参謀の陣を構築中..."
+tmux new-session -d -s sanbo
+tmux send-keys -t sanbo "cd $(pwd) && export PS1='(\[\033[1;36m\]参謀\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear" Enter
+tmux select-pane -t sanbo:0.0 -T "sanbo"
+tmux select-pane -t sanbo:0.0 -P 'bg=#1a1a2e'  # 参謀の深い紺色
+
+log_success "  └─ 参謀の陣、構築完了"
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # STEP 6: Claude Code 起動（--setup-only でスキップ）
 # ═══════════════════════════════════════════════════════════════════════════════
 if [ "$SETUP_ONLY" = false ]; then
@@ -351,6 +377,11 @@ if [ "$SETUP_ONLY" = false ]; then
         tmux send-keys -t "multiagent:0.$i" Enter
     done
     log_info "  └─ 家老・足軽、召喚完了"
+
+    # 参謀
+    tmux send-keys -t sanbo "claude --dangerously-skip-permissions"
+    tmux send-keys -t sanbo Enter
+    log_info "  └─ 参謀、召喚完了"
 
     log_success "✅ 全軍 Claude Code 起動完了"
     echo ""
@@ -452,6 +483,13 @@ NINJA_EOF
         sleep 0.5
     done
 
+    # 参謀に指示書を読み込ませる
+    sleep 2
+    log_info "  └─ 参謀に指示書を伝達中..."
+    tmux send-keys -t sanbo "instructions/sanbo.md を読んで役割を理解せよ。汝は参謀である。"
+    sleep 0.5
+    tmux send-keys -t sanbo Enter
+
     log_success "✅ 全軍に指示書伝達完了"
     echo ""
 fi
@@ -486,6 +524,11 @@ echo "     ├─────────┼─────────┼──
 echo "     │ashigaru2│ashigaru5│ashigaru8│"
 echo "     │ (足軽2) │ (足軽5) │ (足軽8) │"
 echo "     └─────────┴─────────┴─────────┘"
+echo ""
+echo "     【sanboセッション】参謀の陣（1ペイン）"
+echo "     ┌─────────────────────────────┐"
+echo "     │  Pane 0: 参謀 (SANBO)       │  ← 軍師・品質検証専門"
+echo "     └─────────────────────────────┘"
 echo ""
 
 echo ""
@@ -540,6 +583,27 @@ if [ "$OPEN_TERMINAL" = true ]; then
         log_success "  └─ ターミナルタブ展開完了"
     else
         log_info "  └─ wt.exe が見つかりません。手動でアタッチしてください。"
+    fi
+    echo ""
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 9: ウォッチドッグ起動（-w オプション時のみ）
+# ═══════════════════════════════════════════════════════════════════════════════
+if [ "$START_WATCHDOG" = true ]; then
+    log_info "🐕 ウォッチドッグを起動中..."
+
+    WATCHDOG_SCRIPT="$SCRIPT_DIR/extensions/scripts/watchdog.sh"
+    if [ -x "$WATCHDOG_SCRIPT" ]; then
+        # inotify-tools の確認
+        if command -v inotifywait &> /dev/null; then
+            "$WATCHDOG_SCRIPT" --daemon
+            log_success "  └─ ウォッチドッグ起動完了（バックグラウンド）"
+        else
+            log_info "  └─ inotify-tools が必要です: sudo apt install inotify-tools"
+        fi
+    else
+        log_info "  └─ ウォッチドッグスクリプトが見つかりません"
     fi
     echo ""
 fi

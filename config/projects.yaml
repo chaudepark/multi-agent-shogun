@@ -1,9 +1,25 @@
+# =============================================================================
+# プロジェクト設定
+# =============================================================================
+# auto_load: プロジェクトルール自動読み込み設定
+#   enabled: true で有効化
+#   files: 読み込むファイル（相対パス）
+#     - CLAUDE.md             # プロジェクト固有の指示
+#     - .claude/rules/*.md    # 追加ルールファイル
+#     - .cursorrules          # Cursor互換
+# =============================================================================
+
 projects:
   - id: sample_project
     name: "Sample Project"
     path: "/mnt/c/Projects/Sample"
     priority: high
     status: active
+    auto_load:
+      enabled: true
+      files:
+        - CLAUDE.md
+        - .claude/rules/*.md
 
   - id: pitacas
     name: "ピタキャス - タレントキャスティング支援AI"
@@ -15,3 +31,8 @@ projects:
       キャスティング業界向けAI×SaaSプラットフォーム。
       タレント検索・リスト作成の自動化により、従来半日かかっていた作業を10分で提出物化。
       キラーフィーチャー: Surprise-but-Right（意外なのに納得）提案
+    auto_load:
+      enabled: true
+      files:
+        - CLAUDE.md
+        - .claude/rules/*.md

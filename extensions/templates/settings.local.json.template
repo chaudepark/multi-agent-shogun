@@ -1,0 +1,17 @@
+{
+  "comment": "このファイルをコピーして settings.local.json を作成してください",
+  "extensions": {
+    "hooks": {
+      "role_detector": true,
+      "post_task_report": true,
+      "permission_guard": true
+    },
+    "sanbo": {
+      "enabled": true,
+      "session_name": "sanbo"
+    },
+    "project_rules": {
+      "auto_load": true
+    }
+  }
+}
