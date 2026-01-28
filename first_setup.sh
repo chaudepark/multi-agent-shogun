@@ -134,6 +134,45 @@ else
 fi
 
 # ============================================================
+# STEP 2.5: inotify-tools チェック（ウォッチドッグ用）
+# ============================================================
+log_step "STEP 2.5: inotify-tools チェック（ウォッチドッグ用）"
+
+if command -v inotifywait &> /dev/null; then
+    log_success "inotify-tools がインストール済みです"
+    RESULTS+=("inotify-tools: OK")
+else
+    log_warn "inotify-tools がインストールされていません"
+    echo ""
+
+    if command -v apt-get &> /dev/null; then
+        read -p "  inotify-tools をインストールしますか? [Y/n]: " REPLY
+        REPLY=${REPLY:-Y}
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            log_info "inotify-tools をインストール中..."
+            sudo apt-get install -y inotify-tools
+
+            if command -v inotifywait &> /dev/null; then
+                log_success "inotify-tools インストール完了"
+                RESULTS+=("inotify-tools: インストール完了")
+            else
+                log_error "inotify-tools のインストールに失敗しました"
+                RESULTS+=("inotify-tools: インストール失敗")
+                log_warn "ウォッチドッグ機能は使用できません"
+            fi
+        else
+            log_warn "inotify-tools のインストールをスキップしました"
+            RESULTS+=("inotify-tools: 未インストール (スキップ)")
+            log_warn "ウォッチドッグ機能は使用できません"
+        fi
+    else
+        log_warn "apt-get が見つかりません。手動で inotify-tools をインストールしてください"
+        echo "  インストール方法: sudo apt-get install inotify-tools"
+        RESULTS+=("inotify-tools: 未インストール (手動インストール必要)")
+    fi
+fi
+
+# ============================================================
 # STEP 3: Node.js チェック
 # ============================================================
 log_step "STEP 3: Node.js チェック"
