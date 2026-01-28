@@ -142,11 +142,16 @@ check_report_status() {
     local status=$(grep -E "^status:" "$file" 2>/dev/null | head -1 | awk '{print $2}')
 
     case "$status" in
-        done|failed|blocked)
+        done|completed|completed_partial|failed|blocked)
             return 0  # 要対応
             ;;
+        in_progress|assigned|pending)
+            return 1  # 対応不要（作業中）
+            ;;
         *)
-            return 1  # 対応不要
+            # 不明なステータスも念のため要対応とする
+            log_info "不明なステータス: $status ($(basename "$file"))"
+            return 0
             ;;
     esac
 }
