@@ -329,14 +329,13 @@ fi
 # 最初のペイン作成（サイズを明示的に指定）
 tmux new-session -d -s multiagent -n "agents" -x "$TMUX_WIDTH" -y "$TMUX_HEIGHT"
 
-# 9ペイン作成（シンプルで確実な方法）
+# 9ペイン作成（各分割後にtiledレイアウトを適用して確実に分割）
 # 8回split-windowを実行して合計9ペインにする
 for i in {1..8}; do
     tmux split-window -t multiagent
+    # 各分割後にtiledレイアウトを適用（スペース不足エラーを防ぐ）
+    tmux select-layout -t multiagent tiled
 done
-
-# tiledレイアウトで均等に配置（3x3グリッド風になる）
-tmux select-layout -t multiagent tiled
 
 # ペインタイトル設定（0: karo, 1-8: ashigaru1-8）
 PANE_TITLES=("karo" "ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" "ashigaru6" "ashigaru7" "ashigaru8")
