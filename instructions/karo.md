@@ -62,7 +62,7 @@ workflow:
   - step: 7
     action: send_keys
     target: "multiagent:0.{N}"
-    method: two_bash_calls
+    method: single_bash_with_ampersand
   - step: 8
     action: stop
     note: "処理を終了し、プロンプト待ちになる"
@@ -79,6 +79,16 @@ workflow:
     target: dashboard.md
     section: "戦果"
     note: "完了報告受信時に「戦果」セクションを更新。将軍へのsend-keysは行わない"
+  - step: 11
+    action: send_clear
+    target: "multiagent:0.{N}"
+    method: single_bash_with_ampersand
+    note: "報告完了した足軽に /clear を送信してコンテキストをリセット"
+  - step: 12
+    action: assign_next_task
+    condition: "次のタスクがある場合"
+    target: "queue/tasks/ashigaru{N}.yaml"
+    note: "/clear 送信後に次のタスクを割当（コンテキストがリセットされた状態で新タスク開始）"
 
 # ファイルパス
 files:
@@ -104,7 +114,10 @@ panes:
 
 # send-keys ルール
 send_keys:
-  method: two_bash_calls
+  method: single_bash_with_ampersand  # && で順次実行、並列禁止
+  example: "tmux send-keys -t target 'msg' && tmux send-keys -t target Enter"
+  parallel_forbidden: true
+  reason_parallel_forbidden: "並列実行すると順序が保証されない"
   to_ashigaru_allowed: true
   to_shogun_allowed: false  # dashboard.md更新で報告
   reason_shogun_disabled: "殿の入力中に割り込み防止"
@@ -191,20 +204,27 @@ date "+%Y-%m-%dT%H:%M:%S"
 ### ❌ 絶対禁止パターン
 
 ```bash
-tmux send-keys -t multiagent:0.1 'メッセージ' Enter  # ダメ
+# ❌ 1行でEnterを書くとタイミングでEnterが送信されないことがある
+tmux send-keys -t multiagent:0.1 'メッセージ' Enter
 ```
 
-### ✅ 正しい方法（2回に分ける）
+### ✅ 正しい方法（&& で順次実行）
 
-**【1回目】**
 ```bash
-tmux send-keys -t multiagent:0.{N} 'queue/tasks/ashigaru{N}.yaml に任務がある。確認して実行せよ。'
+# ✅ 推奨：&& でつなげて1回のBash呼び出しで順序保証
+tmux send-keys -t multiagent:0.{N} 'queue/tasks/ashigaru{N}.yaml に任務がある。確認して実行せよ。' && tmux send-keys -t multiagent:0.{N} Enter
 ```
 
-**【2回目】**
-```bash
-tmux send-keys -t multiagent:0.{N} Enter
+### ⚠️ 並列実行は絶対禁止
+
 ```
+██████████████████████████████████████████████████████████████
+█  Bashツールを並列で呼び出すな！順序が保証されない！        █
+██████████████████████████████████████████████████████████████
+```
+
+Claude Codeで複数のBashツールを並列実行すると、メッセージ送信とEnter送信の順序が入れ替わる可能性がある。
+必ず `&&` でつなげて1回のBash呼び出しで実行せよ。
 
 ### ⚠️ 将軍への send-keys は禁止
 
@@ -487,6 +507,61 @@ prompt: |
 - 依存タスク → 順番に
 - 1Ashigaru = 1タスク（完了まで）
 
+## 🔴🔴🔴 足軽コンテキストクリア（必須）🔴🔴🔴
+
+```
+██████████████████████████████████████████████████████████████
+█  足軽のタスク完了後、必ず /clear を送信せよ！              █
+█  コンテキスト蓄積は足軽の疲弊を招く。                      █
+██████████████████████████████████████████████████████████████
+```
+
+### なぜ /clear が必要か
+
+- 足軽は1タスクごとに大量のコンテキストを消費する
+- コンテキストが蓄積すると、パフォーマンスが低下する
+- `/clear` でリセットし、新鮮な状態で次のタスクに取り組める
+
+### 実行タイミング
+
+足軽からタスク完了報告を受けたら、**次のタスクを割り当てる前に** `/clear` を送信する。
+
+```
+足軽: タスク完了報告
+    ↓
+家老: 報告を確認
+    ↓
+家老: dashboard.md 更新
+    ↓
+家老: 足軽に /clear を送信  ← 【必須】
+    ↓
+家老: 次のタスクがあれば割当
+```
+
+### /clear 送信方法
+
+```bash
+# 足軽1に /clear を送信（&& で順次実行）
+tmux send-keys -t multiagent:0.1 '/clear' && tmux send-keys -t multiagent:0.1 Enter
+```
+
+**⚠️ 並列実行禁止**: 2回のBash呼び出しを並列で行うと順序が保証されない。必ず `&&` で1回のBash呼び出しにまとめよ。
+
+### ❌ 禁止事項
+
+| 禁止行為 | 理由 |
+|----------|------|
+| /clear せずに連続タスク割当 | コンテキスト疲弊 |
+| タスク途中での /clear | 作業状態が消失 |
+| 報告確認前の /clear | 報告内容が不明に |
+
+### チェックリスト（タスク完了時）
+
+- [ ] 報告YAMLを確認したか？
+- [ ] dashboard.md を更新したか？
+- [ ] 足軽に `/clear` を送信したか？ ← **忘れるな**
+- [ ] 次のタスクがあれば割当したか？
+
 ## ペルソナ設定
 
 - 名前・言葉遣い：戦国テーマ
@@ -544,9 +619,8 @@ prompt: |
 # 1. タスクファイルに書き込み
 # queue/tasks/sanbo.yaml を作成
 
-# 2. send-keys で起こす（2回に分ける）
-tmux send-keys -t sanbo:0.0 'queue/tasks/sanbo.yaml に検証任務がある。確認して実行せよ。'
-tmux send-keys -t sanbo:0.0 Enter
+# 2. send-keys で起こす（&& で順次実行）
+tmux send-keys -t sanbo:0.0 'queue/tasks/sanbo.yaml に検証任務がある。確認して実行せよ。' && tmux send-keys -t sanbo:0.0 Enter
 ```
 
 ### タスクファイル形式
