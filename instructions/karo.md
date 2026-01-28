@@ -395,6 +395,92 @@ Claude Codeは「待機」できない。プロンプト待ちは「停止」。
   足軽2 → output_2.md
 ```
 
+## 🔴 Worktree管理（家老の責任）
+
+複数足軽が同一プロジェクトで並列作業する場合、worktreeを使用してコンフリクトを防ぐ。
+**worktreeの作成・削除は家老の責任**である。足軽は触らない。
+
+### ⚡ サブエージェント/スキルへの委譲（必須）
+
+**Git操作は単純作業。既存のエージェント/スキルに委譲してコンテキストを節約せよ。**
+
+| 操作 | 委譲先 | 定義場所 |
+|------|--------|----------|
+| worktree作成 | `/worktree` スキル | `.claude/skills/worktree/` |
+| 状態確認 | `git-status` エージェント | `.claude/agents/git-status.md` |
+| コミット作成 | `git-commit` エージェント | `.claude/agents/git-commit.md` |
+| プッシュ | `git-push` エージェント | `.claude/agents/git-push.md` |
+| worktree削除・マージ | `Bash` エージェント | （汎用） |
+
+### worktree作成
+
+```bash
+# /worktree スキルを使用
+/worktree feature-auth
+
+# → ~/work/worktrees/{project}/feature-auth が作成される
+# → ブランチ feature/auth が作成される
+```
+
+### タスクYAMLへのworktreeパス記載（必須）
+
+```yaml
+task:
+  task_id: subtask_001
+  parent_cmd: cmd_001
+  project_id: fairway-app
+  project_path: "/home/sarai/work/github.com/owner/fairway-buddies-app"
+
+  # 🔴 worktree使用時は必ず記載
+  worktree_path: "/home/sarai/work/worktrees/fairway-buddies-app/feature-auth"
+  branch: "feature/auth"
+
+  description: "認証機能を実装せよ"
+  target_path: "/home/sarai/work/worktrees/fairway-buddies-app/feature-auth/src/auth.ts"
+  status: assigned
+  timestamp: "2026-01-28T12:00:00"
+
+  project_rules: |
+    # プロジェクトルール...
+```
+
+### 足軽完了後のマージ（Bashエージェントに委譲）
+
+```
+Task tool で Bash エージェントを起動：
+
+subagent_type: Bash
+prompt: |
+  以下を順番に実行せよ：
+  1. cd ~/work/github.com/owner/project
+  2. git pull origin main
+  3. git merge feature/auth
+  4. コンフリクトがあれば報告して停止
+  5. worktree-remove feature-auth
+
+  各ステップの結果を報告せよ。
+```
+
+その後、`git-push` エージェントでリモートにプッシュ。
+
+### ❌ 禁止事項
+
+| 禁止行為 | 理由 |
+|----------|------|
+| 足軽がworktreeを作成 | 管理の混乱 |
+| 足軽がmainに直接コミット | コンフリクト発生 |
+| worktreeパスなしでタスク割当 | 足軽がどこで作業するか不明 |
+| マージせずにworktree削除 | 作業が消失 |
+| 家老が直接git操作 | コンテキスト浪費（エージェント/スキルに委譲せよ） |
+
+### いつworktreeを使うか
+
+| 状況 | worktree使用 |
+|------|-------------|
+| 同一プロジェクトに2人以上の足軽 | ✅ 必須 |
+| 1人の足軽が1プロジェクト担当 | ❌ 不要（mainで作業可） |
+| 異なるプロジェクトを別々の足軽 | ❌ 不要 |
+
 ## 並列化ルール
 
 - 独立タスク → 複数Ashigaruに同時
@@ -476,6 +562,56 @@ task:
   timestamp: "2026-01-27T15:00:00"
   status: assigned
 ```
+
+## GitHub連携（Issue/PR確認）
+
+将軍からの指示にGitHub Issue/PR URLが含まれる場合、家老はサブエージェントで内容を確認してからタスク分解する。
+
+### 使用するエージェント
+
+| エージェント | 用途 | 定義場所 |
+|-------------|------|----------|
+| `gh-issue-view` | Issue詳細取得 | `.claude/agents/gh-issue-view.md` |
+| `gh-pr-view` | PR詳細取得 | `.claude/agents/gh-pr-view.md` |
+
+### Issue確認の流れ
+
+```
+1. 将軍から指示受領（Issue URL含む）
+     ↓
+2. gh-issue-view エージェントに委譲
+   Task tool: subagent_type: gh-issue-view
+   prompt: "https://github.com/owner/repo/issues/123 の詳細を確認せよ"
+     ↓
+3. Issue内容を元にタスク分解
+     ↓
+4. 足軽にタスク割当
+```
+
+### PR確認の流れ
+
+```
+1. 足軽がPR作成を報告
+     ↓
+2. gh-pr-view エージェントに委譲
+   Task tool: subagent_type: gh-pr-view
+   prompt: "https://github.com/owner/repo/pull/456 の詳細を確認せよ"
+     ↓
+3. PR内容をdashboard.mdに記載
+```
+
+### いつ確認するか
+
+| 状況 | 確認対象 | エージェント |
+|------|----------|--------------|
+| 将軍からIssue URL付き指示 | Issue詳細 | `gh-issue-view` |
+| 足軽がPR作成完了報告 | PR詳細 | `gh-pr-view` |
+| 将軍からPRレビュー依頼 | PR詳細 | `gh-pr-view` |
+
+### ❌ 禁止事項
+
+- 家老が直接 `gh issue view` / `gh pr view` を実行（コンテキスト浪費）
+- Issue/PR URLを確認せずにタスク分解（情報不足で誤分解の原因）
 
 ## スキル化候補の取り扱い
 

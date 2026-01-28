@@ -1,7 +1,7 @@
 # multi-agent-shogun システム構成
 
-> **Version**: 1.0.0
-> **Last Updated**: 2026-01-27
+> **Version**: 1.2.0
+> **Last Updated**: 2026-01-28
 
 ## 概要
 multi-agent-shogunは、Claude Code + tmux を使ったマルチエージェント並列開発基盤である。
@@ -12,11 +12,13 @@ multi-agent-shogunは、Claude Code + tmux を使ったマルチエージェン�
 コンパクション後は作業前に必ず以下を実行せよ：
 
 1. **自分のpane名を確認**: `tmux display-message -p '#W'`
-2. **対応する instructions を読む**:
+2. **グローバルコンテキストを読む**: `memory/global_context.md`
+3. **プロジェクトコンテキストを読む**: `context/{current_project}.md`
+4. **対応する instructions を読む**:
    - shogun → instructions/shogun.md
    - karo (multiagent:0.0) → instructions/karo.md
    - ashigaru (multiagent:0.1-8) → instructions/ashigaru.md
-3. **禁止事項を確認してから作業開始**
+5. **禁止事項を確認してから作業開始**
 
 summaryの「次のステップ」を見てすぐ作業してはならぬ。まず自分が誰かを確認せよ。
 
@@ -73,6 +75,110 @@ dashboard.md                      # 人間用ダッシュボード
 
 **注意**: 各足軽には専用のタスクファイル（queue/tasks/ashigaru1.yaml 等）がある。
 これにより、足軽が他の足軽のタスクを誤って実行することを防ぐ。
+
+## Worktree Strategy（並列作業運用）
+
+複数の足軽が同一プロジェクトで並列作業する場合、コンフリクト防止のためworktreeを使用する。
+
+### ディレクトリ構成
+```
+~/work/worktrees/
+└── {project}/
+    ├── feature-auth/      ← 足軽1が担当
+    ├── feature-profile/   ← 足軽2が担当
+    └── bugfix-login/      ← 足軽3が担当
+```
+
+### 運用フロー
+
+```
+┌─────────┐
+│  将軍   │ タスク一覧を家老に指示
+└────┬────┘
+     ▼
+┌─────────┐
+│  家老   │ 1. タスクごとにworktree作成（worktree-add）
+│         │ 2. 各足軽にworktreeパスを含むタスクを割当
+└────┬────┘
+     ▼
+┌─────────┐
+│  足軽   │ 1. 指定されたworktreeで作業
+│         │ 2. コミット・プッシュ
+│         │ 3. 完了報告
+└────┬────┘
+     ▼
+┌─────────┐
+│  家老   │ 1. 報告を確認
+│         │ 2. mainにマージ（またはPR作成）
+│         │ 3. worktree削除（worktree-remove）
+└─────────┘
+```
+
+### 家老のworktree管理コマンド
+
+```bash
+# プロジェクトディレクトリに移動
+cd ~/work/github.com/owner/project
+
+# worktree作成（ブランチも自動作成）
+worktree-add feature-auth
+
+# worktree一覧確認
+git worktree list
+
+# 作業完了後、mainにマージ
+cd ~/work/github.com/owner/project  # mainに戻る
+git merge feature/auth
+
+# worktree削除
+worktree-remove feature-auth
+```
+
+### タスクYAMLへのworktreeパス記載
+
+家老は足軽へのタスク割当時、worktreeの絶対パスを明記する：
+
+```yaml
+# queue/tasks/ashigaru1.yaml
+task_id: cmd_001
+project_id: fairway-app
+worktree_path: /home/sarai/work/worktrees/fairway-buddies-app/feature-auth
+branch: feature/auth
+description: |
+  認証機能を実装せよ
+```
+
+### 重要ルール
+
+- **家老のみがworktreeを作成・削除する**（足軽は触らない）
+- **足軽は指定されたworktree内でのみ作業する**
+- **mainブランチへの直接コミットは禁止**
+- **マージは家老が責任を持つ**
+
+## 3層コンテキスト管理
+
+コンパクション対策として、3層のコンテキスト管理を採用している。
+
+| Layer | 場所 | 内容 | 永続性 |
+|-------|------|------|--------|
+| 1 | Memory MCP | ユーザー嗜好・重要な意思決定 | セッション超過 |
+| 2 | memory/global_context.md | システム全体設定・導入済みMCP | ファイル |
+| 3 | context/{project_id}.md | プロジェクト固有の状態 | ファイル |
+
+### Layer 1: Memory MCP（永続記憶）
+- `mcp__memory__read_graph` で読み込み
+- ユーザーの好み、重要な意思決定を記録
+- セッションを超えて保持される
+
+### Layer 2: Global Context（システム全体）
+- `memory/global_context.md` を参照
+- 導入済みMCP一覧、システムレベルの設定
+- 全エージェント共通の情報
+
+### Layer 3: Project Context（プロジェクト固有）
+- `context/{project_id}.md` を参照
+- 7セクションテンプレート（What/Why/Who/Constraints/Current State/Decisions/Notes）
+- プロジェクトごとの決定事項、進捗状況
 
 ## tmuxセッション構成
 
@@ -136,7 +242,54 @@ MCPツールは遅延ロード方式。使用前に必ず `ToolSearch` で検索
 2. 返ってきたツール（mcp__notion__xxx）を使用
 ```
 
-**導入済みMCP**: Notion, Playwright, GitHub, Sequential Thinking, Memory
+**導入済みMCP**: Notion, Playwright, GitHub, Sequential Thinking, Memory, Context7, Firebase
+
+## Subagent Delegation Principle
+
+コンテキストウィンドウを節約するため、定型作業はサブエージェントに委任する。
+
+### 品質チェック（Quality Checks）
+| エージェント | 用途 |
+|-------------|------|
+| `lint-typecheck` | Lint・型チェック実行 |
+| `test-runner` | テストのみ実行 |
+| `pre-commit-checker` | コミット前の全品質チェック |
+
+### Git 操作（Git Operations）
+| エージェント | 用途 |
+|-------------|------|
+| `git-status` | 変更ファイルとdiffを確認 |
+| `git-commit` | Conventional Commit形式でコミット作成 |
+| `git-push` | リモートにプッシュ |
+| `git-pr-create` | PR作成 |
+
+### GitHub 操作（GitHub Operations）
+| エージェント | 用途 |
+|-------------|------|
+| `gh-issue-view` | Issue詳細表示 |
+| `gh-pr-view` | PR詳細表示 |
+
+### 分析（Analysis）
+| エージェント | 用途 |
+|-------------|------|
+| `code-reviewer` | コードレビュー・問題特定 |
+| `Explore` | コードベース探索・検索 |
+
+### 委任の原則
+- **将軍・家老**: サブエージェントを積極的に使用せよ
+- **足軽**: 自身でBashを実行（サブエージェント不要）
+- **参謀**: 品質チェック専門、サブエージェント不要
+
+## Completion Checklist
+
+タスク完了前に以下を確認せよ（対象プロジェクトにテスト・Lintがある場合）：
+
+- [ ] `lint-typecheck` エージェントでLint・型チェックがパス
+- [ ] `test-runner` エージェントでテストがパス
+- [ ] `pre-commit-checker` エージェントで全品質チェックがパス
+
+**重要**: 品質チェックは自分で実行せず、必ずサブエージェントに委任せよ。
+これによりコンテキストウィンドウを節約し、長時間の作業が可能になる。
 
 ## 拡張機能（extensions/）
 
