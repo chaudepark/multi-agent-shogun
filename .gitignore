@@ -1,14 +1,13 @@
 # Order file (internal use only)
 claude-shogun-orders.md
 
-# Claude Code settings
-.claude/
+# Claude Code settings (local only)
+.claude/settings.json
+.claude/settings.local.json
+.claude/settings.local.json.example
 
 # Test outputs (generated during testing)
 test_output/
-
-# Generated skills (local development)
-skills/
 
 # Temporary files
 *.tmp
