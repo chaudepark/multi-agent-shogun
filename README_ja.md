@@ -4,7 +4,7 @@
 
 **Claude Code マルチエージェント統率システム**
 
-*コマンド1つで、8体のAIエージェントが並列稼働*
+*コマンド1つで、8体のAIエージェントが並列稼働 + 参謀が品質検証*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-blueviolet)](https://claude.ai)
@@ -34,10 +34,10 @@
     │   SHOGUN    │  ← 命令を受け取り、即座に委譲
     └──────┬──────┘
            │ YAMLファイル + tmux
-    ┌──────▼──────┐
-    │    KARO     │  ← タスクをワーカーに分配
-    └──────┬──────┘
-           │
+    ┌──────▼──────┐     ┌─────────────┐
+    │    KARO     │─────│    SANBO    │  ← テスト・品質検証
+    └──────┬──────┘     └─────────────┘
+           │                 参謀
   ┌─┬─┬─┬─┴─┬─┬─┬─┐
   │1│2│3│4│5│6│7│8│  ← 8体のワーカーが並列実行
   └─┴─┴─┴─┴─┴─┴─┴─┘
@@ -119,15 +119,23 @@ cd ~/multi-agent-shogun
 # 2. スクリプトに実行権限を付与
 chmod +x *.sh
 
-# 3. 初回セットアップを実行
+# 3. 依存パッケージのインストール
 ./first_setup.sh
+
+# 4. 拡張機能のセットアップ（フック、ウォッチドッグ等）
+./setup.sh
 ```
 
 ### 毎日の起動
 
 ```bash
 cd ~/multi-agent-shogun
+
+# 通常起動
 ./shutsujin_departure.sh
+
+# ウォッチドッグ付きで起動（推奨）
+./shutsujin_departure.sh -w
 ```
 
 </details>
@@ -204,17 +212,19 @@ wsl --install
 
 ### ✅ セットアップ後の状態
 
-どちらのオプションでも、**10体のAIエージェント**が自動起動します：
+どちらのオプションでも、**11体のAIエージェント**が自動起動します：
 
 | エージェント | 役割 | 数 |
 |-------------|------|-----|
 | 🏯 将軍（Shogun） | 総大将 - あなたの命令を受ける | 1 |
 | 📋 家老（Karo） | 管理者 - タスクを分配 | 1 |
 | ⚔️ 足軽（Ashigaru） | ワーカー - 並列でタスク実行 | 8 |
+| 🧠 参謀（Sanbo） | 品質検証 - テスト・Lint実行 | 1 |
 
 tmuxセッションが作成されます：
 - `shogun` - ここに接続してコマンドを出す
-- `multiagent` - ワーカーがバックグラウンドで稼働
+- `multiagent` - 家老・足軽がバックグラウンドで稼働
+- `sanbo` - 参謀がテスト実行を担当
 
 ---
 
@@ -559,6 +569,10 @@ language: en   # 日本語 + 英訳併記
 # デフォルト: フル起動（tmuxセッション + Claude Code起動）
 ./shutsujin_departure.sh
 
+# ウォッチドッグ付きで起動（報告監視・自動再起動）【推奨】
+./shutsujin_departure.sh -w
+./shutsujin_departure.sh --watchdog
+
 # セッションセットアップのみ（Claude Code起動なし）
 ./shutsujin_departure.sh -s
 ./shutsujin_departure.sh --setup-only
@@ -566,6 +580,9 @@ language: en   # 日本語 + 英訳併記
 # フル起動 + Windows Terminalタブを開く
 ./shutsujin_departure.sh -t
 ./shutsujin_departure.sh --terminal
+
+# 全部入り（ウォッチドッグ + ターミナル）
+./shutsujin_departure.sh -w -t
 
 # ヘルプを表示
 ./shutsujin_departure.sh -h
@@ -629,14 +646,26 @@ multi-agent-shogun/
 │
 │  ┌─────────────────── セットアップスクリプト ───────────────────┐
 ├── install.bat               # Windows: 初回セットアップ
-├── first_setup.sh            # Ubuntu/Mac: 初回セットアップ
+├── first_setup.sh            # Ubuntu/Mac: 依存パッケージインストール
+├── setup.sh                  # 拡張機能セットアップ（フック等）
 ├── shutsujin_departure.sh    # 毎日の起動（指示書自動読み込み）
 │  └────────────────────────────────────────────────────────────┘
 │
 ├── instructions/             # エージェント指示書
 │   ├── shogun.md             # 将軍の指示書
 │   ├── karo.md               # 家老の指示書
-│   └── ashigaru.md           # 足軽の指示書
+│   ├── ashigaru.md           # 足軽の指示書
+│   └── sanbo.md              # 参謀の指示書
+│
+├── extensions/               # 拡張機能
+│   ├── hooks/                # Claude Code フック
+│   │   ├── role-detector.sh      # ロール判定
+│   │   ├── permission-guard.sh   # 権限制御
+│   │   └── post-task-report.sh   # 報告自動化
+│   ├── scripts/              # ユーティリティ
+│   │   ├── watchdog.sh           # 報告監視・自動再起動
+│   │   └── agent-status.sh       # エージェント状態確認
+│   └── policies/             # ポリシー定義
 │
 ├── config/
 │   └── settings.yaml         # 言語その他の設定
@@ -652,6 +681,61 @@ multi-agent-shogun/
 ```
 
 </details>
+
+---
+
+## 🔌 拡張機能
+
+### ウォッチドッグ（報告監視・自動再起動）
+
+足軽の報告ファイルを監視し、完了時に自動で家老を起こします。
+
+```bash
+# 起動スクリプトと一緒に起動（推奨）
+./shutsujin_departure.sh -w
+
+# 手動で起動/停止
+./extensions/scripts/watchdog.sh --daemon   # バックグラウンド起動
+./extensions/scripts/watchdog.sh --stop     # 停止
+./extensions/scripts/watchdog.sh --status   # 状態確認
+```
+
+### エージェント状態確認
+
+全エージェントの稼働状況を一覧表示：
+
+```bash
+# 状態確認
+./extensions/scripts/agent-status.sh
+
+# アイドル状態のエージェントを起こす
+./extensions/scripts/agent-status.sh --wake
+```
+
+### フック機能
+
+`setup.sh` 実行で自動設定されます：
+
+| フック | 機能 |
+|--------|------|
+| `permission-guard.sh` | ロール別の権限制御 |
+| `post-task-report.sh` | 報告完了時の自動通知 |
+| `role-detector.sh` | tmuxペイン名からロール判定 |
+
+### 参謀（Sanbo）
+
+テスト実行・品質検証専門のエージェント：
+
+```bash
+# 参謀セッションに接続
+tmux attach-session -t sanbo
+```
+
+| 許可 | 禁止 |
+|------|------|
+| npm test, pytest, cargo test | ソースコード編集 |
+| eslint, tsc, mypy | 本番ファイル変更 |
+| カバレッジ計測 | - |
 
 ---
 
@@ -691,6 +775,27 @@ claude --dangerously-skip-permissions --system-prompt "..."
 ```bash
 tmux attach-session -t multiagent
 # Ctrl+B の後に数字でペインを切り替え
+```
+
+または、状態確認スクリプトを使用：
+```bash
+./extensions/scripts/agent-status.sh         # 状態確認
+./extensions/scripts/agent-status.sh --wake  # 止まっているエージェントを起こす
+```
+
+</details>
+
+<details>
+<summary><b>家老がサボっている？</b></summary>
+
+ウォッチドッグを使用すると、報告完了時に自動で家老を起こします：
+
+```bash
+# ウォッチドッグを起動
+./extensions/scripts/watchdog.sh --daemon
+
+# または起動時に -w オプション
+./shutsujin_departure.sh -w
 ```
 
 </details>

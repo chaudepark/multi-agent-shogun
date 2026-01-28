@@ -4,7 +4,7 @@
 
 **Multi-Agent Orchestration System for Claude Code**
 
-*One command. Eight AI agents working in parallel.*
+*One command. Eight AI agents working in parallel + Quality Assurance.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-blueviolet)](https://claude.ai)
@@ -34,10 +34,10 @@
       │   SHOGUN    │  ← Receives your command, delegates immediately
       └──────┬──────┘
              │ YAML files + tmux
-      ┌──────▼──────┐
-      │    KARO     │  ← Distributes tasks to workers
-      └──────┬──────┘
-             │
+      ┌──────▼──────┐     ┌─────────────┐
+      │    KARO     │─────│    SANBO    │  ← Test & Quality Assurance
+      └──────┬──────┘     └─────────────┘
+             │                 Staff Officer
     ┌─┬─┬─┬─┴─┬─┬─┬─┐
     │1│2│3│4│5│6│7│8│  ← 8 workers execute in parallel
     └─┴─┴─┴─┴─┴─┴─┴─┘
@@ -119,15 +119,23 @@ cd ~/multi-agent-shogun
 # 2. Make scripts executable
 chmod +x *.sh
 
-# 3. Run first-time setup
+# 3. Install dependencies
 ./first_setup.sh
+
+# 4. Setup extensions (hooks, watchdog, etc.)
+./setup.sh
 ```
 
 ### Daily Startup
 
 ```bash
 cd ~/multi-agent-shogun
+
+# Normal startup
 ./shutsujin_departure.sh
+
+# With watchdog (recommended)
+./shutsujin_departure.sh -w
 ```
 
 </details>
@@ -204,17 +212,19 @@ If you prefer to install dependencies manually:
 
 ### ✅ What Happens After Setup
 
-After running either option, **10 AI agents** will start automatically:
+After running either option, **11 AI agents** will start automatically:
 
 | Agent | Role | Quantity |
 |-------|------|----------|
 | 🏯 Shogun | Commander - receives your orders | 1 |
 | 📋 Karo | Manager - distributes tasks | 1 |
 | ⚔️ Ashigaru | Workers - execute tasks in parallel | 8 |
+| 🧠 Sanbo | Quality Assurance - runs tests & linting | 1 |
 
 You'll see tmux sessions created:
 - `shogun` - Connect here to give commands
-- `multiagent` - Workers running in background
+- `multiagent` - Karo & Ashigaru running in background
+- `sanbo` - Staff officer for test execution
 
 ---
 
@@ -553,6 +563,10 @@ language: en   # Japanese + English translation
 # Default: Full startup (tmux sessions + Claude Code launch)
 ./shutsujin_departure.sh
 
+# With watchdog (report monitoring & auto-restart) [Recommended]
+./shutsujin_departure.sh -w
+./shutsujin_departure.sh --watchdog
+
 # Session setup only (without launching Claude Code)
 ./shutsujin_departure.sh -s
 ./shutsujin_departure.sh --setup-only
@@ -560,6 +574,9 @@ language: en   # Japanese + English translation
 # Full startup + open Windows Terminal tabs
 ./shutsujin_departure.sh -t
 ./shutsujin_departure.sh --terminal
+
+# All options combined (watchdog + terminal)
+./shutsujin_departure.sh -w -t
 
 # Show help
 ./shutsujin_departure.sh -h
@@ -610,14 +627,26 @@ multi-agent-shogun/
 │
 │  ┌─────────────────── SETUP SCRIPTS ───────────────────┐
 ├── install.bat               # Windows: First-time setup
-├── first_setup.sh            # Ubuntu/Mac: First-time setup
+├── first_setup.sh            # Ubuntu/Mac: Install dependencies
+├── setup.sh                  # Extensions setup (hooks, etc.)
 ├── shutsujin_departure.sh    # Daily startup (auto-loads instructions)
 │  └────────────────────────────────────────────────────┘
 │
 ├── instructions/             # Agent instruction files
 │   ├── shogun.md             # Commander instructions
 │   ├── karo.md               # Manager instructions
-│   └── ashigaru.md           # Worker instructions
+│   ├── ashigaru.md           # Worker instructions
+│   └── sanbo.md              # Staff officer instructions
+│
+├── extensions/               # Extension features
+│   ├── hooks/                # Claude Code hooks
+│   │   ├── role-detector.sh      # Role detection
+│   │   ├── permission-guard.sh   # Permission control
+│   │   └── post-task-report.sh   # Auto-notification
+│   ├── scripts/              # Utilities
+│   │   ├── watchdog.sh           # Report monitoring & auto-restart
+│   │   └── agent-status.sh       # Agent status check
+│   └── policies/             # Policy definitions
 │
 ├── config/
 │   └── settings.yaml         # Language and other settings
@@ -633,6 +662,61 @@ multi-agent-shogun/
 ```
 
 </details>
+
+---
+
+## 🔌 Extensions
+
+### Watchdog (Report Monitoring & Auto-Restart)
+
+Monitors report files and automatically wakes up Karo when workers complete tasks.
+
+```bash
+# Start with the launch script (recommended)
+./shutsujin_departure.sh -w
+
+# Manual control
+./extensions/scripts/watchdog.sh --daemon   # Start in background
+./extensions/scripts/watchdog.sh --stop     # Stop
+./extensions/scripts/watchdog.sh --status   # Check status
+```
+
+### Agent Status Check
+
+View all agents' running status:
+
+```bash
+# Check status
+./extensions/scripts/agent-status.sh
+
+# Wake up idle agents
+./extensions/scripts/agent-status.sh --wake
+```
+
+### Hooks
+
+Automatically configured by `setup.sh`:
+
+| Hook | Function |
+|------|----------|
+| `permission-guard.sh` | Role-based permission control |
+| `post-task-report.sh` | Auto-notification on report completion |
+| `role-detector.sh` | Detect role from tmux pane name |
+
+### Sanbo (Staff Officer)
+
+Specialized agent for test execution & quality assurance:
+
+```bash
+# Connect to sanbo session
+tmux attach-session -t sanbo
+```
+
+| Allowed | Forbidden |
+|---------|-----------|
+| npm test, pytest, cargo test | Source code editing |
+| eslint, tsc, mypy | Production file changes |
+| Coverage measurement | - |
 
 ---
 
@@ -672,6 +756,27 @@ Check the worker's pane:
 ```bash
 tmux attach-session -t multiagent
 # Use Ctrl+B then number to switch panes
+```
+
+Or use the status script:
+```bash
+./extensions/scripts/agent-status.sh         # Check status
+./extensions/scripts/agent-status.sh --wake  # Wake up stuck agents
+```
+
+</details>
+
+<details>
+<summary><b>Karo not responding?</b></summary>
+
+Use watchdog to automatically wake Karo when reports complete:
+
+```bash
+# Start watchdog
+./extensions/scripts/watchdog.sh --daemon
+
+# Or use -w flag on startup
+./shutsujin_departure.sh -w
 ```
 
 </details>
