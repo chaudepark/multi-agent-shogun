@@ -37,7 +37,7 @@ log_war() {
 # ═══════════════════════════════════════════════════════════════════════════════
 SETUP_ONLY=false
 OPEN_TERMINAL=false
-START_WATCHDOG=false
+START_WATCHDOG=true  # デフォルトで有効
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -49,8 +49,8 @@ while [[ $# -gt 0 ]]; do
             OPEN_TERMINAL=true
             shift
             ;;
-        -w|--watchdog)
-            START_WATCHDOG=true
+        --no-watchdog)
+            START_WATCHDOG=false
             shift
             ;;
         -h|--help)
@@ -62,15 +62,14 @@ while [[ $# -gt 0 ]]; do
             echo "オプション:"
             echo "  -s, --setup-only  tmuxセッションのセットアップのみ（Claude起動なし）"
             echo "  -t, --terminal    Windows Terminal で新しいタブを開く"
-            echo "  -w, --watchdog    ウォッチドッグを起動（報告監視・自動再起動）"
+            echo "  --no-watchdog     ウォッチドッグを起動しない（デフォルトは起動）"
             echo "  -h, --help        このヘルプを表示"
             echo ""
             echo "例:"
-            echo "  ./shutsujin_departure.sh         # 全エージェント起動（通常の出陣）"
-            echo "  ./shutsujin_departure.sh -s      # セットアップのみ（手動でClaude起動）"
-            echo "  ./shutsujin_departure.sh -t      # 全エージェント起動 + ターミナルタブ展開"
-            echo "  ./shutsujin_departure.sh -w      # 全エージェント起動 + ウォッチドッグ"
-            echo "  ./shutsujin_departure.sh -t -w   # 全部入り"
+            echo "  ./shutsujin_departure.sh              # 全エージェント起動（ウォッチドッグ付き）"
+            echo "  ./shutsujin_departure.sh -s           # セットアップのみ（手動でClaude起動）"
+            echo "  ./shutsujin_departure.sh -t           # 全起動 + ターミナルタブ展開"
+            echo "  ./shutsujin_departure.sh --no-watchdog # ウォッチドッグなしで起動"
             echo ""
             echo "エイリアス:"
             echo "  csst  → cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh"

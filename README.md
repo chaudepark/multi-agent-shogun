@@ -130,13 +130,10 @@ chmod +x *.sh
 
 ```bash
 cd ~/multi-agent-shogun
-
-# Normal startup
 ./shutsujin_departure.sh
-
-# With watchdog (recommended)
-./shutsujin_departure.sh -w
 ```
+
+Watchdog (report monitoring & auto-restart) starts by default.
 
 </details>
 
@@ -560,12 +557,8 @@ language: en   # Japanese + English translation
 <summary><b>shutsujin_departure.sh Options</b> (Click to expand)</summary>
 
 ```bash
-# Default: Full startup (tmux sessions + Claude Code launch)
+# Default: Full startup (with watchdog)
 ./shutsujin_departure.sh
-
-# With watchdog (report monitoring & auto-restart) [Recommended]
-./shutsujin_departure.sh -w
-./shutsujin_departure.sh --watchdog
 
 # Session setup only (without launching Claude Code)
 ./shutsujin_departure.sh -s
@@ -575,8 +568,8 @@ language: en   # Japanese + English translation
 ./shutsujin_departure.sh -t
 ./shutsujin_departure.sh --terminal
 
-# All options combined (watchdog + terminal)
-./shutsujin_departure.sh -w -t
+# Without watchdog (usually not needed)
+./shutsujin_departure.sh --no-watchdog
 
 # Show help
 ./shutsujin_departure.sh -h
@@ -670,15 +663,15 @@ multi-agent-shogun/
 ### Watchdog (Report Monitoring & Auto-Restart)
 
 Monitors report files and automatically wakes up Karo when workers complete tasks.
+**Starts by default.**
 
 ```bash
-# Start with the launch script (recommended)
-./shutsujin_departure.sh -w
+# Check status
+./extensions/scripts/watchdog.sh --status
 
-# Manual control
-./extensions/scripts/watchdog.sh --daemon   # Start in background
+# Manual stop/start
 ./extensions/scripts/watchdog.sh --stop     # Stop
-./extensions/scripts/watchdog.sh --status   # Check status
+./extensions/scripts/watchdog.sh --daemon   # Start in background
 ```
 
 ### Agent Status Check

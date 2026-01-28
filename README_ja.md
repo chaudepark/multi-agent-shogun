@@ -130,13 +130,10 @@ chmod +x *.sh
 
 ```bash
 cd ~/multi-agent-shogun
-
-# 通常起動
 ./shutsujin_departure.sh
-
-# ウォッチドッグ付きで起動（推奨）
-./shutsujin_departure.sh -w
 ```
+
+ウォッチドッグ（報告監視・自動再起動）はデフォルトで起動します。
 
 </details>
 
@@ -566,12 +563,8 @@ language: en   # 日本語 + 英訳併記
 <summary><b>shutsujin_departure.sh オプション</b>（クリックで展開）</summary>
 
 ```bash
-# デフォルト: フル起動（tmuxセッション + Claude Code起動）
+# デフォルト: フル起動（ウォッチドッグ付き）
 ./shutsujin_departure.sh
-
-# ウォッチドッグ付きで起動（報告監視・自動再起動）【推奨】
-./shutsujin_departure.sh -w
-./shutsujin_departure.sh --watchdog
 
 # セッションセットアップのみ（Claude Code起動なし）
 ./shutsujin_departure.sh -s
@@ -581,8 +574,8 @@ language: en   # 日本語 + 英訳併記
 ./shutsujin_departure.sh -t
 ./shutsujin_departure.sh --terminal
 
-# 全部入り（ウォッチドッグ + ターミナル）
-./shutsujin_departure.sh -w -t
+# ウォッチドッグなしで起動（通常は不要）
+./shutsujin_departure.sh --no-watchdog
 
 # ヘルプを表示
 ./shutsujin_departure.sh -h
@@ -689,15 +682,15 @@ multi-agent-shogun/
 ### ウォッチドッグ（報告監視・自動再起動）
 
 足軽の報告ファイルを監視し、完了時に自動で家老を起こします。
+**デフォルトで起動します。**
 
 ```bash
-# 起動スクリプトと一緒に起動（推奨）
-./shutsujin_departure.sh -w
+# 状態確認
+./extensions/scripts/watchdog.sh --status
 
-# 手動で起動/停止
-./extensions/scripts/watchdog.sh --daemon   # バックグラウンド起動
+# 手動で停止/起動
 ./extensions/scripts/watchdog.sh --stop     # 停止
-./extensions/scripts/watchdog.sh --status   # 状態確認
+./extensions/scripts/watchdog.sh --daemon   # バックグラウンド起動
 ```
 
 ### エージェント状態確認
