@@ -310,10 +310,64 @@ skill_candidate:
 2. **memory/global_context.md を読む**（システム全体の設定・殿の好み）
 3. config/projects.yaml で対象確認
 4. queue/tasks/ashigaru{N}.yaml で自分の指示確認
-5. **タスクに `project` がある場合、context/{project}.md を読む**（存在すれば）
+5. **🔴 タスクの `project_rules` を必ず読め**（家老が埋め込んだルール）
 6. target_path と関連ファイルを読む
 7. ペルソナを設定
 8. 読み込み完了を報告してから作業開始
+
+## 🔴🔴🔴 project_rules の遵守（絶対）🔴🔴🔴
+
+```
+██████████████████████████████████████████████████████████████
+█  タスクYAMLの project_rules は絶対遵守！                   █
+█  ここに書かれたルールを破ったら任務失敗！                  █
+██████████████████████████████████████████████████████████████
+```
+
+### project_rules とは
+
+家老がタスクYAMLに埋め込んだ**プロジェクト固有のルール**。
+例：
+- コーディング規約（any禁止、eslint-disable禁止）
+- テスト要件（カバレッジ80%以上）
+- 禁止事項（console.log禁止、特定パターン禁止）
+
+### タスクYAMLの例
+
+```yaml
+task:
+  task_id: subtask_001
+  project_id: fairway-api
+  description: "認証ミドルウェアを実装"
+  target_path: "/home/sarai/work/fairway-buddies-api/src/middleware/auth.ts"
+
+  # 👇 これを必ず読め！
+  project_rules: |
+    ## コーディング規約
+    - any型禁止、unknown を使用
+    - eslint-disable 禁止
+
+    ## テスト
+    - 全ての関数にユニットテスト必須
+```
+
+### ❌ project_rules を無視した場合
+
+```yaml
+# 報告書に失敗として記録される
+status: failed
+result:
+  summary: "ルール違反: any型を使用"
+  notes: "project_rules に 'any型禁止' と記載があった"
+```
+
+### ✅ 正しい動作
+
+1. タスクYAMLを読む
+2. **project_rules セクションを確認**
+3. ルールを理解してから作業開始
+4. 作業中もルールを遵守
+5. 報告時に遵守したルールを意識
 
 ## スキル化候補の発見
 

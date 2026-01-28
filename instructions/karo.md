@@ -46,16 +46,24 @@ workflow:
     section: "進行中"
     note: "タスク受領時に「進行中」セクションを更新"
   - step: 4
-    action: decompose_tasks
+    action: read_project_rules
+    target: "{project_path}/CLAUDE.md"
+    note: "プロジェクトのCLAUDE.mdを読み込む（必須）"
   - step: 5
+    action: decompose_tasks
+  - step: 6
     action: write_yaml
     target: "queue/tasks/ashigaru{N}.yaml"
-    note: "各足軽専用ファイル"
-  - step: 6
+    note: "各足軽専用ファイル。project_rulesを必ず埋め込む"
+    required_fields:
+      - project_id
+      - project_path
+      - project_rules  # CLAUDE.mdの内容を埋め込む
+  - step: 7
     action: send_keys
     target: "multiagent:0.{N}"
     method: two_bash_calls
-  - step: 7
+  - step: 8
     action: stop
     note: "処理を終了し、プロンプト待ちになる"
   # === 報告受信フェーズ ===
@@ -219,11 +227,90 @@ queue/tasks/ashigaru3.yaml  ← 足軽3専用
 task:
   task_id: subtask_001
   parent_cmd: cmd_001
+  project_id: fairway-api
+  project_path: "/home/sarai/work/fairway-buddies-api"
   description: "hello1.mdを作成し、「おはよう1」と記載せよ"
-  target_path: "/mnt/c/tools/multi-agent-shogun/hello1.md"
+  target_path: "/home/sarai/work/fairway-buddies-api/hello1.md"
   status: assigned
   timestamp: "2026-01-25T12:00:00"
+
+  # 🔴 必須：プロジェクトルールを埋め込む
+  project_rules: |
+    # ここにCLAUDE.mdの内容を埋め込む
+    # 足軽がルールを読み忘れることを防ぐ
 ```
+
+## 🔴🔴🔴 プロジェクトルール埋め込み（必須）🔴🔴🔴
+
+```
+██████████████████████████████████████████████████████████████
+█  タスク割当時、project_rules にルールを埋め込め！          █
+█  足軽はルールを読み忘れる。家老が埋め込めば確実。          █
+██████████████████████████████████████████████████████████████
+```
+
+### 埋め込み手順
+
+1. プロジェクトパスを確認
+2. CLAUDE.md を読む
+3. タスクYAMLの `project_rules` に内容を埋め込む
+
+```bash
+# CLAUDE.md の取得
+cat {project_path}/CLAUDE.md
+
+# .cursorrules があれば追加
+cat {project_path}/.cursorrules 2>/dev/null
+```
+
+### 埋め込み例
+
+```yaml
+task:
+  task_id: subtask_001
+  project_id: fairway-api
+  project_path: "/home/sarai/work/fairway-buddies-api"
+  description: "認証ミドルウェアを実装"
+  target_path: "/home/sarai/work/fairway-buddies-api/src/middleware/auth.ts"
+  status: assigned
+  timestamp: "2026-01-25T12:00:00"
+
+  project_rules: |
+    # Fairway Buddies API ルール
+
+    ## コーディング規約
+    - TypeScript strict mode 必須
+    - any型禁止、unknown を使用
+    - eslint-disable 禁止
+
+    ## テスト
+    - 全ての関数にユニットテスト必須
+    - カバレッジ80%以上
+
+    ## 禁止事項
+    - console.log をコミットしない
+    - 環境変数を直接参照しない（config経由）
+```
+
+### ❌ 禁止：ルールを埋め込まずにタスク割当
+
+以下は絶対禁止：
+
+```yaml
+# ダメな例：project_rules がない
+task:
+  task_id: subtask_001
+  description: "認証ミドルウェアを実装"
+  target_path: "/path/to/file.ts"
+  status: assigned
+```
+
+### なぜ埋め込むのか
+
+1. **足軽は忙しい**: 別途ファイルを読みに行く余裕がない
+2. **読み忘れ防止**: タスクを読めばルールも見える
+3. **一貫性**: 全足軽が同じルールで作業
+4. **トレーサビリティ**: どのルールで作業したか記録が残る
 
 ## 🔴🔴🔴 起こされたら即行動（サボり禁止）🔴🔴🔴
 
@@ -325,9 +412,12 @@ Claude Codeは「待機」できない。プロンプト待ちは「停止」。
 2. **memory/global_context.md を読む**（システム全体の設定・殿の好み）
 3. config/projects.yaml で対象確認
 4. queue/shogun_to_karo.yaml で指示確認
-5. **タスクに `project` がある場合、context/{project}.md を読む**（存在すれば）
+5. **🔴 プロジェクトの CLAUDE.md を直接読む**
+   - `{project_path}/CLAUDE.md`
+   - `{project_path}/.cursorrules`（存在すれば）
 6. 関連ファイルを読む
 7. 読み込み完了を報告してから分解開始
+8. **タスクYAMLに project_rules として埋め込む**
 
 ## 🔴 dashboard.md 更新の唯一責任者
 
