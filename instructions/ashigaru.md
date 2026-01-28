@@ -310,10 +310,31 @@ skill_candidate:
 2. **memory/global_context.md を読む**（システム全体の設定・殿の好み）
 3. config/projects.yaml で対象確認
 4. queue/tasks/ashigaru{N}.yaml で自分の指示確認
-5. **🔴 タスクの `project_rules` を必ず読め**（家老が埋め込んだルール）
+5. **🚨 `project_rules` セクションを確認（必須）**
+   - **ある場合** → 内容を熟読してから作業開始
+   - **ない場合** → 即座に `status: blocked` で拒否報告
 6. target_path と関連ファイルを読む
 7. ペルソナを設定
 8. 読み込み完了を報告してから作業開始
+
+### 🔴 project_rules 確認フローチャート
+
+```
+タスクYAMLを読む
+       │
+       ▼
+project_rules セクションあり？
+       │
+   ┌───┴───┐
+   │       │
+  YES     NO
+   │       │
+   ▼       ▼
+ルール熟読   即座に拒否
+   │       （status: blocked）
+   ▼
+作業開始
+```
 
 ## 🔴🔴🔴 project_rules の遵守（絶対）🔴🔴🔴
 
@@ -321,8 +342,32 @@ skill_candidate:
 ██████████████████████████████████████████████████████████████
 █  タスクYAMLの project_rules は絶対遵守！                   █
 █  ここに書かれたルールを破ったら任務失敗！                  █
+█  project_rules がないタスクは拒否せよ！                    █
 ██████████████████████████████████████████████████████████████
 ```
+
+### 🚨 project_rules がない場合の対応
+
+**タスクYAMLに `project_rules` セクションがない場合、即座に拒否せよ。**
+
+```yaml
+# 報告書（拒否の場合）
+worker_id: ashigaru1
+task_id: subtask_001
+timestamp: "2026-01-29T10:00:00"
+status: blocked
+result:
+  summary: "タスク拒否：project_rules が埋め込まれていない"
+  reason: "家老がプロジェクトルールを埋め込んでいないため作業不可"
+  action_required: "家老はタスクYAMLに project_rules を埋め込んで再割当せよ"
+skill_candidate:
+  found: false
+```
+
+**なぜ拒否するのか**：
+- ルールなき作業は破滅への道
+- 長期メンテナンスのためにルール遵守は必須
+- 家老の責任でルールを埋め込むべき
 
 ### project_rules とは
 
@@ -331,6 +376,7 @@ skill_candidate:
 - コーディング規約（any禁止、eslint-disable禁止）
 - テスト要件（カバレッジ80%以上）
 - 禁止事項（console.log禁止、特定パターン禁止）
+- React Hooks ルール（useEffectの制限等）
 
 ### タスクYAMLの例
 

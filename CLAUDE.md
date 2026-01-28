@@ -192,6 +192,62 @@ tmux send-keys -t multiagent:0.1 '/clear' && tmux send-keys -t multiagent:0.1 En
 - **これにより足軽のコンテキストウィンドウがリセットされ、新鮮な状態で次のタスクに取り組める**
 - **大量のコンテキストが蓄積すると足軽が疲弊し、パフォーマンスが低下する**
 
+## 🔴 プロジェクトルール遵守（絶対原則）
+
+```
+██████████████████████████████████████████████████████████████
+█  ルールなき作業は破滅への道！                              █
+█  長期メンテナンスを守れ！                                  █
+██████████████████████████████████████████████████████████████
+```
+
+### なぜルール遵守が重要か
+
+- プロジェクトには固有のコーディング規約、テスト要件、禁止事項がある
+- ルールを無視したコードは技術的負債の山となる
+- 一貫性のないコードベースはメンテナンス不能に陥る
+
+### 家老の責任：project_rules 埋め込み
+
+タスクYAMLには**必ず** `project_rules` セクションを埋め込む。
+
+```yaml
+# queue/tasks/ashigaru1.yaml
+task_id: subtask_001
+project_id: fairway-app
+project_path: /home/sarai/work/fairway-buddies-app
+description: |
+  認証機能を実装せよ
+
+# 🔴 必須：プロジェクトルールを埋め込む
+project_rules: |
+  ## Type Safety Philosophy
+  - Treat `any` as technical debt; use `unknown` + runtime validation.
+  - Treat type assertions as code smell; use type guards.
+
+  ## TDD Core Principle
+  - When you modify an implementation file, you must also review and update the corresponding test file.
+  ...
+```
+
+### 足軽の権限：ルールなしタスクの拒否
+
+**`project_rules` がないタスクは `status: blocked` で拒否できる。**
+
+```yaml
+status: blocked
+result:
+  summary: "タスク拒否：project_rules が埋め込まれていない"
+  action_required: "家老はタスクYAMLに project_rules を埋め込んで再割当せよ"
+```
+
+### ルール取得スクリプト
+
+```bash
+# プロジェクトのルールファイルを全て取得
+./extensions/scripts/inject-project-rules.sh --format content {project_id}
+```
+
 ## 3層コンテキスト管理
 
 コンパクション対策として、3層のコンテキスト管理を採用している。
