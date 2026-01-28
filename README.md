@@ -119,11 +119,8 @@ cd ~/multi-agent-shogun
 # 2. Make scripts executable
 chmod +x *.sh
 
-# 3. Install dependencies
+# 3. Run setup (dependencies + extensions auto-configured)
 ./first_setup.sh
-
-# 4. Setup extensions (hooks, watchdog, etc.)
-./setup.sh
 ```
 
 ### Daily Startup
