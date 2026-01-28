@@ -300,44 +300,71 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════════
 log_war "⚔️ 家老・足軽の陣を構築中（9名配備）..."
 
-# 最初のペイン作成
-tmux new-session -d -s multiagent -n "agents"
+# ───────────────────────────────────────────────────────────────────────────────
+# セッションサイズの動的検出
+# tmux new-session -d はデフォルト80x24で作成されるため、
+# 現在のクライアントサイズを取得して明示的に指定する
+# ───────────────────────────────────────────────────────────────────────────────
+if tmux list-clients -F "#{client_width}" 2>/dev/null | head -1 | grep -q .; then
+    # 既存のtmuxクライアントがあればそのサイズを使用
+    TMUX_WIDTH=$(tmux list-clients -F "#{client_width}" 2>/dev/null | sort -rn | head -1)
+    TMUX_HEIGHT=$(tmux list-clients -F "#{client_height}" 2>/dev/null | sort -rn | head -1)
+    log_info "  └─ 検出されたターミナルサイズ: ${TMUX_WIDTH}x${TMUX_HEIGHT}"
+else
+    # クライアントがない場合は十分な大きさのデフォルト値を使用
+    TMUX_WIDTH=200
+    TMUX_HEIGHT=60
+    log_info "  └─ デフォルトサイズを使用: ${TMUX_WIDTH}x${TMUX_HEIGHT}"
+fi
 
-# 3x3グリッド作成（合計9ペイン）
-# 最初に3列に分割
-tmux split-window -h -t "multiagent:0"
-tmux split-window -h -t "multiagent:0"
+# 最小サイズチェック（9ペイン配置には最低150x45程度必要）
+MIN_WIDTH=150
+MIN_HEIGHT=45
+if [ "$TMUX_WIDTH" -lt "$MIN_WIDTH" ] || [ "$TMUX_HEIGHT" -lt "$MIN_HEIGHT" ]; then
+    log_info "  ⚠️  ターミナルサイズが小さいため、推奨サイズに調整: ${MIN_WIDTH}x${MIN_HEIGHT}"
+    TMUX_WIDTH=$MIN_WIDTH
+    TMUX_HEIGHT=$MIN_HEIGHT
+fi
 
-# 各列を3行に分割
-tmux select-pane -t "multiagent:0.0"
-tmux split-window -v
-tmux split-window -v
+# 最初のペイン作成（サイズを明示的に指定）
+tmux new-session -d -s multiagent -n "agents" -x "$TMUX_WIDTH" -y "$TMUX_HEIGHT"
 
-tmux select-pane -t "multiagent:0.3"
-tmux split-window -v
-tmux split-window -v
+# 9ペイン作成（シンプルで確実な方法）
+# 8回split-windowを実行して合計9ペインにする
+for i in {1..8}; do
+    tmux split-window -t multiagent
+done
 
-tmux select-pane -t "multiagent:0.6"
-tmux split-window -v
-tmux split-window -v
+# tiledレイアウトで均等に配置（3x3グリッド風になる）
+tmux select-layout -t multiagent tiled
 
 # ペインタイトル設定（0: karo, 1-8: ashigaru1-8）
 PANE_TITLES=("karo" "ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" "ashigaru6" "ashigaru7" "ashigaru8")
 PANE_COLORS=("1;31" "1;34" "1;34" "1;34" "1;34" "1;34" "1;34" "1;34" "1;34")  # karo: 赤, ashigaru: 青
 
+# ペイン数を確認
+PANE_COUNT=$(tmux list-panes -t multiagent 2>/dev/null | wc -l)
+if [ "$PANE_COUNT" -lt 9 ]; then
+    log_info "  ⚠️  警告: 9ペイン必要なところ ${PANE_COUNT} ペインしか作成できませんでした"
+    log_info "      ターミナルウィンドウを大きくして再実行してください"
+fi
+
 for i in {0..8}; do
-    tmux select-pane -t "multiagent:0.$i" -T "${PANE_TITLES[$i]}"
-    tmux send-keys -t "multiagent:0.$i" "cd $(pwd) && export PS1='(\[\033[${PANE_COLORS[$i]}m\]${PANE_TITLES[$i]}\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear" Enter
+    # ペインが存在する場合のみ設定
+    if tmux select-pane -t "multiagent:0.$i" 2>/dev/null; then
+        tmux select-pane -t "multiagent:0.$i" -T "${PANE_TITLES[$i]}"
+        tmux send-keys -t "multiagent:0.$i" "cd $(pwd) && export PS1='(\[\033[${PANE_COLORS[$i]}m\]${PANE_TITLES[$i]}\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear" Enter
+    fi
 done
 
-log_success "  └─ 家老・足軽の陣、構築完了"
+log_success "  └─ 家老・足軽の陣、構築完了 (${PANE_COUNT}/9 ペイン)"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 5: shogunセッション作成（1ペイン）
 # ═══════════════════════════════════════════════════════════════════════════════
 log_war "👑 将軍の本陣を構築中..."
-tmux new-session -d -s shogun
+tmux new-session -d -s shogun -x "$TMUX_WIDTH" -y "$TMUX_HEIGHT"
 tmux send-keys -t shogun "cd $(pwd) && export PS1='(\[\033[1;35m\]将軍\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear" Enter
 tmux select-pane -t shogun:0.0 -P 'bg=#002b36'  # 将軍の Solarized Dark
 
@@ -348,7 +375,7 @@ echo ""
 # STEP 5.5: sanboセッション作成（1ペイン - 参謀）
 # ═══════════════════════════════════════════════════════════════════════════════
 log_war "🧠 参謀の陣を構築中..."
-tmux new-session -d -s sanbo
+tmux new-session -d -s sanbo -x "$TMUX_WIDTH" -y "$TMUX_HEIGHT"
 tmux send-keys -t sanbo "cd $(pwd) && export PS1='(\[\033[1;36m\]参謀\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear" Enter
 tmux select-pane -t sanbo:0.0 -T "sanbo"
 tmux select-pane -t sanbo:0.0 -P 'bg=#1a1a2e'  # 参謀の深い紺色
